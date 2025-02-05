@@ -1,4 +1,3 @@
-
 plugins {
     id("java")
 }
@@ -10,6 +9,10 @@ repositories {
     mavenCentral()
 }
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation("ch.qos.logback:logback-classic:${property("logbackVersion")}")
     implementation("com.google.guava:guava:${property("guavaVersion")}")
@@ -17,8 +20,5 @@ dependencies {
     implementation("org.springframework:spring-tx:${property("springTxVersion")}")
     testImplementation("org.testng:testng:${property("testNgVersion")}")
     testImplementation("org.junit.jupiter:junit-jupiter:${property("junitVersion")}")
-}
-
-tasks.test {
-    useJUnitPlatform()
+    testImplementation("org.assertj:assertj-core:${property("assertjVersion")}")
 }
