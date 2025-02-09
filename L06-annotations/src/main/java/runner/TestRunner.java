@@ -4,96 +4,94 @@ import annotations.After;
 import annotations.Before;
 import annotations.Test;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class TestRunner {
-    private static int passedTests = 0;
-    private static int totalTests = 0;
-    private static int failedTests = 0;
-    private static final Logger logger = Logger.getLogger(TestRunner.class.getName());
+
+
+    // Загружаем тестовый класс по имени
     public static void runTests(String className) {
         try {
-            // Загружаем тестовый класс по имени
             Class<?> testClass = Class.forName(className);
-            List<Method> beforeMethods = new ArrayList<>();
-            List<Method> afterMethods = new ArrayList<>();
-            List<Method> testMethods = new ArrayList<>();
+            List<Method> beforeMethods = getAnnotatedMethods(testClass, Before.class);
+            List<Method> afterMethods = getAnnotatedMethods(testClass, After.class);
+            List<Method> testMethods = getAnnotatedMethods(testClass, Test.class);
 
-            // Собираем методы с аннотациями
-            for (Method method : testClass.getDeclaredMethods()) {
-                if (method.isAnnotationPresent(Before.class)) {
-                    beforeMethods.add(method);
-                } else if (method.isAnnotationPresent(After.class)) {
-                    afterMethods.add(method);
-                } else if (method.isAnnotationPresent(Test.class)) {
-                    testMethods.add(method);
-                }
-            }
-
-            // Выполняем тесты
-            for (int i = 0; i < testMethods.size(); i++) {
-                Method testMethod = testMethods.get(i);
-                totalTests++;
-                System.out.println("=====================");
-                System.out.println("Test Number " + totalTests);
-                System.out.println("=====================");
-                Object testInstance = testClass.getDeclaredConstructor().newInstance();
-
-
-                try {
-                    // Выполнение методов @Before
-                    for (Method beforeMethod : beforeMethods) {
-                        beforeMethod.setAccessible(true);
-                        beforeMethod.invoke(testInstance);
-                    }
-
-                    // Выполнение тестового метода
-                    testMethod.setAccessible(true);
-                    testMethod.invoke(testInstance);
-                    System.out.println("[PASS] " + testMethod.getName());
-                    passedTests++;
-
-                } catch (InvocationTargetException e) {
-                    System.out.println("[FAIL] " + testMethod.getName() + " - " + e.getCause().getMessage());
-                    failedTests++;
-                } catch (Exception e) {
-                    System.out.println("[ERROR] Unexpected error in test: " + e.getMessage());
-                } finally {
-                    // Выполнение методов @After
-                    for (Method afterMethod : afterMethods) {
-                        try {
-                            afterMethod.setAccessible(true);
-                            afterMethod.invoke(testInstance);
-                        } catch (Exception e) {
-                            System.out.println("[ERROR in @After] " + e.getCause());
-                        }
-                    }
-                }
-
-            }
-
-            // Итоговая статистика
-            System.out.println("Total Tests: " + testMethods.size());
-            System.out.println("Passed: " + passedTests);
-            System.out.println("Failed: " + failedTests);
+            executeAllTests(testClass, beforeMethods, testMethods, afterMethods);
 
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Test execution failed", e);
+            System.err.println("Error loading test class: " + e.getMessage());
         }
     }
 
-    public static void main(String[] args)
-    {
-        if (args.length != 1) {
-            System.out.println("Usage: TestRunner <full-class-name>");
-            return;
-        }
-        runTests(args[0]);
 
+    // Собираем методы с аннотациями
+    private static List<Method> getAnnotatedMethods(Class<?> clazz, Class<?> annotation) {
+        List<Method> annotatedMethods = new ArrayList<>();
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.isAnnotationPresent((Class) annotation)) {
+                method.setAccessible(true);
+                annotatedMethods.add(method);
+            }
+        }
+        return annotatedMethods;
+    }
+
+
+    // Выполняем тесты
+    private static void executeAllTests(Class<?> testClass, List<Method> beforeMethods,
+                                        List<Method> testMethods, List<Method> afterMethods) {
+        int passed = 0, failed = 0;
+
+        for (int i = 0; i < testMethods.size(); i++) {
+            Method testMethod = testMethods.get(i);
+            Object testInstance = null;
+
+            try {
+                testInstance = testClass.getDeclaredConstructor().newInstance();
+                // Выполнение методов @Before
+                runLifecycleMethods(beforeMethods, testInstance);
+
+
+                // Выполнение тестового метода
+                System.out.printf("[%d/%d] Running test: %s%n", i + 1, testMethods.size(), testMethod.getName());
+                testMethod.invoke(testInstance);
+                passed++;
+                System.out.printf("[%d/%d] [PASS] %s%n", i + 1, testMethods.size(), testMethod.getName());
+
+            } catch (Exception e) {
+                failed++;
+                System.out.printf("[%d/%d] [FAIL] %s - %s%n", i + 1, testMethods.size(),
+                        testMethod.getName(), e.getCause());
+            } finally {
+                if (testInstance != null) {
+                    // Выполнение методов @After
+                    runLifecycleMethods(afterMethods, testInstance);
+                }
+            }
+        }
+
+        printSummary(testMethods.size(), passed, failed);
+    }
+
+
+    //Запуск методов жизненного цикла
+    private static void runLifecycleMethods(List<Method> methods, Object instance) {
+        for (Method method : methods) {
+            try {
+                method.invoke(instance);
+            } catch (Exception e) {
+                System.err.println("Error in lifecycle method: " + e.getCause());
+            }
+        }
+    }
+
+
+    // Итоговая статистика
+    private static void printSummary(int total, int passed, int failed) {
+        System.out.println("---------------");
+        System.out.printf("Total Tests: %d, Passed: %d, Failed: %d%n", total, passed, failed);
     }
 }
