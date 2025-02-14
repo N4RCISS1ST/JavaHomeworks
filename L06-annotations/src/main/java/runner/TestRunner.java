@@ -11,7 +11,10 @@ import java.util.List;
 public class TestRunner {
 
 
-    // Загружаем тестовый класс по имени
+     /**
+     * Загружаем тестовый класс по имени
+     * @param className
+     */
     public static void runTests(String className) {
         try {
             Class<?> testClass = Class.forName(className);
