@@ -1,2 +1,2 @@
 rootProject.name = "gradle"
-include("hw01-gradle", "L03-generics", "L06-annotations")
+include("hw01-gradle", "L03-generics", "L06-annotations", "L08-gc")
