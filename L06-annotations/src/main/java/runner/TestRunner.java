@@ -31,10 +31,10 @@ public class TestRunner {
 
 
     // Собираем методы с аннотациями
-    private static List<Method> getAnnotatedMethods(Class<?> clazz, Class<?> annotation) {
+    private static List<Method> getAnnotatedMethods(Class<?> clazz, Class<? extends Annotation> annotation) {
         List<Method> annotatedMethods = new ArrayList<>();
         for (Method method : clazz.getDeclaredMethods()) {
-            if (method.isAnnotationPresent((Class) annotation)) {
+            if (method.isAnnotationPresent(annotation)) {
                 method.setAccessible(true);
                 annotatedMethods.add(method);
             }
