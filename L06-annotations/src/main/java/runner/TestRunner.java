@@ -4,6 +4,7 @@ import annotations.After;
 import annotations.Before;
 import annotations.Test;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,10 +12,6 @@ import java.util.List;
 public class TestRunner {
 
 
-     /**
-     * Загружаем тестовый класс по имени
-     * @param className
-     */
     public static void runTests(String className) {
         try {
             Class<?> testClass = Class.forName(className);
@@ -30,7 +27,6 @@ public class TestRunner {
     }
 
 
-    // Собираем методы с аннотациями
     private static List<Method> getAnnotatedMethods(Class<?> clazz, Class<? extends Annotation> annotation) {
         List<Method> annotatedMethods = new ArrayList<>();
         for (Method method : clazz.getDeclaredMethods()) {
@@ -43,7 +39,6 @@ public class TestRunner {
     }
 
 
-    // Выполняем тесты
     private static void executeAllTests(Class<?> testClass, List<Method> beforeMethods,
                                         List<Method> testMethods, List<Method> afterMethods) {
         int passed = 0, failed = 0;
@@ -54,11 +49,17 @@ public class TestRunner {
 
             try {
                 testInstance = testClass.getDeclaredConstructor().newInstance();
-                // Выполнение методов @Before
-                runLifecycleMethods(beforeMethods, testInstance);
+                try {
+                    runLifecycleMethods(beforeMethods, testInstance);
+                } catch (Exception e) {
+                    System.out.printf("[%d/%d] [FAIL] %s - Failed in @Before method: %s%n",
+                            i + 1, testMethods.size(), testMethod.getName(), e.getCause());
+                    failed++;
+                    runLifecycleMethods(afterMethods, testInstance);
+                    continue;
+                }
 
 
-                // Выполнение тестового метода
                 System.out.printf("[%d/%d] Running test: %s%n", i + 1, testMethods.size(), testMethod.getName());
                 testMethod.invoke(testInstance);
                 passed++;
@@ -80,19 +81,17 @@ public class TestRunner {
     }
 
 
-    //Запуск методов жизненного цикла
     private static void runLifecycleMethods(List<Method> methods, Object instance) {
         for (Method method : methods) {
             try {
                 method.invoke(instance);
             } catch (Exception e) {
-                System.err.println("Error in lifecycle method: " + e.getCause());
+                throw new RuntimeException(e.getCause());
             }
         }
     }
 
 
-    // Итоговая статистика
     private static void printSummary(int total, int passed, int failed) {
         System.out.println("---------------");
         System.out.printf("Total Tests: %d, Passed: %d, Failed: %d%n", total, passed, failed);

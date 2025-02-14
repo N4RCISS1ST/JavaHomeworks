@@ -12,6 +12,7 @@ public class SampleTestClass {
     public void setUp() {
         System.out.println("Getting ready..");
         System.out.println("-----------------");
+        throw new RuntimeException("Setup failed!");
     }
 
 
